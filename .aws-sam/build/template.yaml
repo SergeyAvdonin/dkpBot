@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Sample SAM Template for HelloWorld
+
+  '
+Globals:
+  Function:
+    Timeout: 60
+Resources:
+  UpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: UpdateFunction
+      Handler: DkpBot::DkpBot.Handler::UpdateHandler
+      Runtime: dotnetcore3.1
+      Environment:
+        Variables:
+          PARAM1: VALUE
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            Path: /update
+            Method: post
+  RegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: RegisterFunction
+      Handler: DkpBot::DkpBot.Handler::Register
+      Runtime: dotnetcore3.1
+      Environment:
+        Variables:
+          PARAM1: VALUE
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            Path: /register
+            Method: get
+Outputs:
+  Register:
+    Description: Register
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/register/
+  Update:
+    Description: Update
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/update/

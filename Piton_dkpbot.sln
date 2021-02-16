@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DkpBot", "src\DkpBot\DkpBot.csproj", "{5E28F129-E1AF-4410-829F-DE13A6B9B5E0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloWorld.Tests", "test\HelloWorld.Test\HelloWorld.Tests.csproj", "{E6C99B68-B1F6-49AB-AC2A-8E5CA5A66D64}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{706CB534-D703-444D-95F7-4BB145E977F0}"
+ProjectSection(SolutionItems) = preProject
+	.gitignore = .gitignore
+	omnisharp.json = omnisharp.json
+	README.md = README.md
+	template.yaml = template.yaml
+EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5E28F129-E1AF-4410-829F-DE13A6B9B5E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E28F129-E1AF-4410-829F-DE13A6B9B5E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E28F129-E1AF-4410-829F-DE13A6B9B5E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E28F129-E1AF-4410-829F-DE13A6B9B5E0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6C99B68-B1F6-49AB-AC2A-8E5CA5A66D64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6C99B68-B1F6-49AB-AC2A-8E5CA5A66D64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6C99B68-B1F6-49AB-AC2A-8E5CA5A66D64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6C99B68-B1F6-49AB-AC2A-8E5CA5A66D64}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
