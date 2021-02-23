@@ -16,7 +16,7 @@ namespace DkpBot.Commands
         {
             var chatId = message.Chat.Id;
             var words = message.Text.Split(' ');
-            if (words.Length != 3 && int.TryParse(words[2], out _))
+            if (words.Length != 3 || !int.TryParse(words[2], out _))
             {
                 await botClient.SendTextMessageAsync(chatId, $"Неверное количество аргументов");
                 return;
@@ -24,7 +24,9 @@ namespace DkpBot.Commands
 
             try
             {
-                await DBHelper.ChangeRoleAsync(words[1], words[2]);
+                var targetChatId = await DBHelper.ChangeRoleAsync(words[1], words[2]);
+                await botClient.SendTextMessageAsync(targetChatId,
+                    $"Вам назначена новая роль {(Role) int.Parse(words[2])}");
                 await botClient.SendTextMessageAsync(chatId,
                     $"Успех. Пользователю с id = {words[1]} назначена роль {(Role) int.Parse(words[2])}");
             }
@@ -42,7 +44,7 @@ namespace DkpBot.Commands
 
         public override bool Match(Message message)
         {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.TextMessage)
+            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
                 return false;
 
             return message.Text.Contains(this.Name);

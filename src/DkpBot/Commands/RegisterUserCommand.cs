@@ -11,16 +11,23 @@ namespace DkpBot.Commands
     {
         public override string Name { get; } = @"/register";
 
-        readonly Regex nicknameRegex = new Regex("^[а-яА-ЯёЁa-zA-Z]+$");
+        readonly Regex nicknameRegex = new Regex("^[а-яА-ЯёЁa-zA-Z0-9]+$");
         public override async Task Execute(Message message, TelegramBotClient botClient)
         {
             var chatId = message.Chat.Id;
-            //var words = message.Text.Split(' ');
-            /*if (words.Length < 1 || !nicknameRegex.IsMatch(words[1]))
+            var userName = message.From.Username;
+            if (string.IsNullOrEmpty(userName))
+                userName = message.From.FirstName;
+            if (string.IsNullOrEmpty(userName))
+                userName = "no_name";
+            
+            var words = message.Text.Split(' ');
+            if (words.Length < 2 || string.IsNullOrEmpty(words[1]))
             {
-                await botClient.SendTextMessageAsync(chatId, $"Неправильно введено имя персонажа, регистрация не прошла, формат команды: /register nickName");
+                await botClient.SendTextMessageAsync(chatId, $"Неверный формат команды, правильный формат: /register Name");
                 return;
-            }*/
+            }
+            
             var user = new User()
             {
                 Active = true,
@@ -29,9 +36,10 @@ namespace DkpBot.Commands
                 Id = message.From.Id,
                 ChatId = chatId,
                 Role = Role.WaitingForAuthentication,
-                TgLogin = message.From.Username,
+                TgLogin = userName,
                 CreationDateTime = DateTime.UtcNow,
                 Characters = new List<string>(),
+                Name = words[1]
             };
 
             try
@@ -42,19 +50,19 @@ namespace DkpBot.Commands
                 else
                     await botClient.SendTextMessageAsync(chatId, "Вы уже зарегистрированы. Посмотреть информацию по аккаунту - команда /info");
                 
-                await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Попытка регистрации от {message.From.Username} ({message.From.Id}), успех: {result}");
+                await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Попытка регистрации от {userName} ({message.From.Id} имя: {words[1]}), успех: {result}");
             }
             catch (Exception e)
             {
                 await botClient.SendTextMessageAsync(chatId, $"Неизвестная ошибка: {e}, обратитесь к администратору");
-                await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Ошибка у {message.From.Username}, {e}");
+                await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Ошибка у tgLogin={userName}, name={words[1]}, {e}");
             }
             
         }
 
         public override bool Match(Message message)
         {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.TextMessage)
+            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
                 return false;
 
             return message.Text.Contains(this.Name);

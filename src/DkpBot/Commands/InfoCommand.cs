@@ -17,22 +17,24 @@ namespace DkpBot.Commands
         {
             var chatId = message.Chat.Id;
             
+            var userName = "'not found'";
             try
             {
                 var userResultAsync = await DBHelper.GetUserResultAsync(message.From.Id.ToString());
-                var user = User.FromDict(userResultAsync.Item); 
+                var user = User.FromDict(userResultAsync.Item);
+                userName = user.Name;
                 await botClient.SendTextMessageAsync(chatId, user.GetInfo());
             }
             catch (Exception e)
             {
                 await botClient.SendTextMessageAsync(chatId,  $"Произошла ошибка {e.Message}. Обратитесь к администратору");
-                LambdaLogger.Log("ERROR: " + e);
+                await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Ошибка у {userName}, {e}");
             }
         }
 
         public override bool Match(Message message)
         {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.TextMessage)
+            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
                 return false;
 
             return message.Text.Contains(this.Name);

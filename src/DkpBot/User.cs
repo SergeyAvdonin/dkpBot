@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Amazon.DynamoDBv2.Model;
+using Amazon.Lambda.Core;
+using Amazon.Runtime.Internal.Util;
+using Newtonsoft.Json;
 
 namespace DkpBot
 {
@@ -9,6 +12,7 @@ namespace DkpBot
     {
         public long Id;
         public string TgLogin;
+        public string Name;
         public List<string> Characters;
         public Role Role;
         public int Adena;
@@ -20,18 +24,22 @@ namespace DkpBot
         public PutItemRequest ToPutItem(string tableName, bool overwrite = false)
         {
             var conditionExpression = !overwrite ? "attribute_not_exists(Id)" : "";
+            LambdaLogger.Log(JsonConvert.SerializeObject(this));
+            if (string.IsNullOrEmpty(TgLogin))
+                TgLogin = "@No_Name"; 
             var item =  new PutItemRequest
             {
                 TableName = tableName,
                 Item = new Dictionary<string,AttributeValue>() { 
                     { "Id", new AttributeValue {S = Id.ToString() }},
                     { "TgLogin", new AttributeValue {S = TgLogin}},
+                    { "Name", new AttributeValue {S = Name}},
                     { "Role", new AttributeValue {N = ((int)Role).ToString()}},
                     { "Adena", new AttributeValue {N = (Adena).ToString()}},
                     { "Dkp", new AttributeValue {N = (Dkp).ToString()}},
                     { "Active", new AttributeValue {BOOL = Active}},
                     { "ChatId", new AttributeValue {N = ChatId.ToString()}},
-                    { "CreationDateTime", new AttributeValue {S = CreationDateTime.ToString("yyyy-MM-ddTHH:mm:ss") }},
+                    { "CreationDateTime", new AttributeValue {S = CreationDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ") }},
                 },
 
                 // Every item must have the key attributes, so using 'attribute_not_exists'
@@ -58,8 +66,9 @@ namespace DkpBot
                 ChatId = int.Parse(dict["ChatId"].N),
                 Role = (Role) int.Parse(dict["Role"].N),
                 TgLogin = dict["TgLogin"].S,
+                Name = dict["Name"].S,
                 CreationDateTime = DateTime.Parse(dict["CreationDateTime"].S),
-                Characters = dict["Characters"].SS,
+                Characters = dict.ContainsKey("Characters") ? dict["Characters"].SS : new List<string>()
             };
         }
 
@@ -68,7 +77,8 @@ namespace DkpBot
             var sb = new StringBuilder();
 
             sb.AppendLine($"Id: {Id}");
-            sb.AppendLine($"TgLogin: {TgLogin}");
+            sb.AppendLine($"Имя: {Name}");
+            sb.AppendLine($"Telegram: {TgLogin}");
             sb.AppendLine($"Накоплено DKP: {Dkp}");
             sb.AppendLine($"Накоплено адены: {Adena}");
             sb.AppendLine($"Ваши персонажи: {string.Join(",", Characters)}");

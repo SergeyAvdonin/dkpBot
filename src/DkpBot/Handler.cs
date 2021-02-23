@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
@@ -27,10 +28,28 @@ namespace DkpBot
         //post
         public async Task<APIGatewayProxyResponse> UpdateHandler(APIGatewayProxyRequest apigProxyEvent, ILambdaContext context)
         {
+            var sw = new Stopwatch();
+            sw.Start();
             LambdaLogger.Log("CONTEXT: " + JsonConvert.SerializeObject(context));
-            LambdaLogger.Log("EVENT: " + JsonConvert.SerializeObject(apigProxyEvent.Body));
+            LambdaLogger.Log("EVENT: " + JsonConvert.SerializeObject(apigProxyEvent));
+            LambdaLogger.Log("start deserialize");
+            var msg = apigProxyEvent.Body;
+            if (apigProxyEvent.Body == null)
+            {
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = 200,
+                };
+            }
+            if (apigProxyEvent.Body.Contains("type\":\"phone_number\""))
+            {
+                LambdaLogger.Log("PHONE_TYPE ERROR");
+                msg = apigProxyEvent.Body.Replace("phone_number", "bot_command");
+                   
+            }
             
-            Update update = JsonConvert.DeserializeObject<Update>(apigProxyEvent.Body);
+            var update = JsonConvert.DeserializeObject<Update>(apigProxyEvent.Body);
+            LambdaLogger.Log("finish deserialize");
             if (update == null || update.EditedMessage != null) 
                 return new APIGatewayProxyResponse
                 {
@@ -42,11 +61,12 @@ namespace DkpBot
             var message = update.Message;
             
             var role = await DBHelper.GetRole(message.From.Id);
+            LambdaLogger.Log($"got role: {sw.ElapsedMilliseconds}");
             foreach (var command in commands)
             {
                 if (command.Match(message))
                 {
-                    if (!(command is UnknownCommand) && GetCommands.CommandToMaxRole[command.Name] < role)
+                    if (!(command is UnknownCommand) && Bot.CommandToMaxRole[command.Name] < role)
                     {
                         if(role == Role.NotRegistered)
                             await botClient.SendTextMessageAsync(message.Chat.Id, $"Вам недоступна эта команда, потому что вы не зарегистрированы, зарегистрируйтесь с помощью команды /register");
@@ -59,7 +79,7 @@ namespace DkpBot
                     break;
                 }
             }
-
+            LambdaLogger.Log($"full cycle: {sw.ElapsedMilliseconds}");
             return new APIGatewayProxyResponse
             {
                 StatusCode = 200,

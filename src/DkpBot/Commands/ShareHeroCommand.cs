@@ -14,11 +14,11 @@ namespace DkpBot.Commands
         NoUser,
         AlreadyHas
     }
-    
+
     public class ShareHeroCommand : Command
     {
         public override string Name { get; } = "/sharehero";
-        readonly Regex nicknameRegex = new Regex("^[а-яА-ЯёЁa-zA-Z]+$");
+        readonly Regex nicknameRegex = new Regex("^[а-яА-ЯёЁa-zA-Z0-9]+$");
         public override async Task Execute(Message message, TelegramBotClient botClient)
         {
             var chatId = message.Chat.Id;
@@ -31,12 +31,18 @@ namespace DkpBot.Commands
             
             if (words.Length < 3)
             {
-                await botClient.SendTextMessageAsync(chatId, $"Не введен id аккаунта, на который расшариваем персонажа, формат команды: /sharehero heroName id");
+                await botClient.SendTextMessageAsync(chatId, $"Не введен id аккаунта, на который происходит расшарка персонажа, формат команды: /sharehero heroName id");
                 return;
             }
+            var userName = "'not found'";
+            
             try
             {
-                var result = await DBHelper.TryShareHeroAsync(words[1], words[2], message.From.Id.ToString(), message.From.Username);
+                var userResultAsync = await DBHelper.GetUserResultAsync(message.From.Id.ToString());
+                var user = User.FromDict(userResultAsync.Item);
+                userName = user.Name;
+                
+                var result = await DBHelper.TryShareHeroAsync(words[1].ToLower(), words[2], message.From.Id.ToString());
                 if (result.Item1 == ShareResult.NoAccess)
                 {
                     if (string.IsNullOrEmpty(result.Item2))
@@ -56,14 +62,14 @@ namespace DkpBot.Commands
                 {
                     var targetUserChatId = await DBHelper.GetChatIdAsync(words[2]);
                     await botClient.SendTextMessageAsync(chatId,$"Персонаж {words[1]} успешно расшарен пользователю {words[2]}");
-                    await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Расшарен персонаж {words[1]} от {message.From.Username} пользователю {words[2]}");
-                    await botClient.SendTextMessageAsync(targetUserChatId, $"Вам расшарен персонаж {words[1]} от {message.From.Username}");
+                    await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Расшарен персонаж {words[1]} от {userName} пользователю {words[2]}");
+                    await botClient.SendTextMessageAsync(targetUserChatId, $"Вам расшарен персонаж {words[1]} от {userName}");
                 }
             }
             catch (Exception e)
             {
                 await botClient.SendTextMessageAsync(chatId,  $"Произошла ошибка {e.Message}, обратитесь к администратору");
-                await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Ошибка у {message.From.Username}, {e}");
+                await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Ошибка у {userName}, {e}");
                 LambdaLogger.Log("ERROR: " + e);
             }
 
@@ -71,7 +77,7 @@ namespace DkpBot.Commands
 
         public override bool Match(Message message)
         {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.TextMessage)
+            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
                 return false;
 
             return message.Text.Contains(this.Name);
