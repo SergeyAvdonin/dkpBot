@@ -11,7 +11,6 @@ namespace DkpBot
     {
         private static TelegramBotClient _botClient;
         private const string ApiKey = "1637138385:AAHQfYvuG4J_0uJPqyillbESQBsBr1y6w0I";
-        private const string HookUrl = "hookurl";
         private static List<Command> _commandsList;
         
         public static readonly Dictionary<string, Role> CommandToMaxRole = new Dictionary<string, Role>
@@ -27,6 +26,29 @@ namespace DkpBot
             ["/event"] = Role.User,
             ["/join"] = Role.User,
             ["/warmup"] = Role.Admin,
+            ["/setpl"] = Role.User,
+            ["/moveadena"] = Role.User,
+            ["/top"] = Role.User,
+            ["/convertdkp"] = Role.Admin,
+            ["/changeevent"] = Role.User,
+            ["/changecoeff"] = Role.SubAdmin,
+            ["/addadena"] = Role.RaidLeader,
+            ["/eventstats"] = Role.Admin,
+            ["/userstats"] = Role.Admin,
+            ["/adddkp"] = Role.RaidLeader,
+            ["/viewevent"] = Role.User,
+            ["/massremoveadena"] = Role.Admin,
+            ["/setmail"] = Role.User,
+            ["/rename"] = Role.User,
+            ["/deleteoldevents"] = Role.Admin,
+            ["/cleanstats"] = Role.Admin,
+            ["/cleantotalstats"] = Role.Admin,
+            ["/deleteevent"] = Role.Admin,
+            ["/pvpdrop"] = Role.Admin,
+            ["/customstats"] = Role.Admin,
+            ["/customstats2"] = Role.Admin,
+            ["/cleanadenadkp"] = Role.Admin,
+            ["/cleancoeffs"] = Role.Admin,
         };
         
         public static IReadOnlyList<Command> Commands => _commandsList.AsReadOnly();
@@ -56,6 +78,29 @@ namespace DkpBot
                 new JoinEventCommand(),
                 new StartCommand(),
                 new Warmup(),
+                new SetPartyLeaderCommand(),
+                new MoveAdenaCommand(),
+                new TopCommand(),
+                new ConvertDkpCommand(),
+                new ChangeEventCommand(),
+                new ChangeHeroCoefficientCommand(),
+                new AddAdenaCommand(),
+                new GetEventStatsCommand(),
+                new GetUserStatsCommand(),
+                new AddDkpCommand(),
+                new RemoveAdenaMassCommand(),
+                new ViewEventCommand(),
+                new SetMailCommand(),
+                new RenameHeroCommand(),
+                new DeleteOldEvents(),
+                new CleanStatsCommand(),
+                new CleanTotalStatsCommand(),
+                new DeleteEventCommand(),
+                new PvpDropCommand(),
+                new GetCustomStats(),
+                new GetCustomStats2(),
+                new CleanAdenaAndDkpCommand(),
+                new CleanCoeffsCommand()
             };
             _commandsList.Add(new UnknownCommand());
             return _botClient;

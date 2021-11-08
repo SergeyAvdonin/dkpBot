@@ -39,7 +39,8 @@ namespace DkpBot.Commands
                 TgLogin = userName,
                 CreationDateTime = DateTime.UtcNow,
                 Characters = new List<string>(),
-                Name = words[1]
+                Name = words[1],
+                PartyLeader = ""
             };
 
             try
@@ -60,12 +61,5 @@ namespace DkpBot.Commands
             
         }
 
-        public override bool Match(Message message)
-        {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
-                return false;
-
-            return message.Text.Contains(this.Name);
-        }
     }
 }

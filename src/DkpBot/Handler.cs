@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Amazon.Lambda.APIGatewayEvents;
@@ -61,7 +62,6 @@ namespace DkpBot
             var message = update.Message;
             
             var role = await DBHelper.GetRole(message.From.Id);
-            LambdaLogger.Log($"got role: {sw.ElapsedMilliseconds}");
             foreach (var command in commands)
             {
                 if (command.Match(message))
@@ -74,12 +74,20 @@ namespace DkpBot
                             await botClient.SendTextMessageAsync(message.Chat.Id, $"Вам не доступна команда {command.Name}");
                     }
                     else
-                        await command.Execute(message, botClient);
+                    {
+                        try
+                        {
+                            await command.Execute(message, botClient);
+                        }
+                        catch (Exception e)
+                        {
+                            await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Неизвестная ошибка у {update.Message.From.Username}. Подробнее в логах");
+                        }
+                    }
                     
                     break;
                 }
             }
-            LambdaLogger.Log($"full cycle: {sw.ElapsedMilliseconds}");
             return new APIGatewayProxyResponse
             {
                 StatusCode = 200,

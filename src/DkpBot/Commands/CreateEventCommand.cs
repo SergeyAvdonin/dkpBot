@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -25,19 +24,23 @@ namespace DkpBot.Commands
             }
             return new string(chars);
         }
+        
         private Dictionary<string, int> eventNames = new Dictionary<string, int>()
         {
-            {"ак", 10},
-            {"орфен", 10},
-            {"ядро", 10},
-            {"закен", 10},
-            {"баюм", 20},
-            {"тои", 15},
-            {"боссы", 10},
-            {"лоа", 20},
-            {"лилит", 10},
-            {"анаким", 10},
-            {"осада", 20},
+            {"ак", 1},
+            {"орфен", 1},
+            {"ядро", 1},
+            {"закен", 1},
+            {"баюм", 1},
+            {"тои", 1},
+            {"боссы", 1},
+            {"лоа", 1},
+            {"лилит", 1},
+            {"анаким", 1},
+            {"осада", 1},
+            {"пвп", 1},
+            {"хб", 1},
+            {"лед", 1},
         };
 
         private Dictionary<string, string> enRuEventNames = new Dictionary<string, string>()
@@ -53,20 +56,26 @@ namespace DkpBot.Commands
             {"lilith", "лилит"},
             {"anakim", "анаким"},
             {"siege", "осада"},
+            {"pvp", "пвп"},
+            {"hb", "хб"},
+            {"led", "лед"},
         };
+        
+        private static Regex fightRegex = new Regex("f(\\d){0,1}");
         
         public override async Task Execute(Message message, TelegramBotClient botClient)
         {
             bool withSelf = !message.Text.Contains("nojoin");
             var chatId = message.Chat.Id;
+
+
+            var words = message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             
-            var words = message.Text.Split(' ');
-            var sw = new Stopwatch();
-            sw.Start();
+
             if (words.Length < 3 || !int.TryParse(words[2], out var peopleC) || peopleC >= 1000 
                 || (!eventNames.ContainsKey(words[1].ToLower()) && !enRuEventNames.ContainsKey(words[1].ToLower())))
             {
-                await botClient.SendTextMessageAsync(chatId, $"Некорректный формат команды, используйте:\n /event eventName peopleCount\n" +
+                await botClient.SendTextMessageAsync(chatId, $"Некорректный формат команды, используйте:\n /event eventName peopleCount (f)\n" +
                                                              $"Возможные eventName:\n\t\t{string.Join("\n\t\t",enRuEventNames.Select(x => $"{x.Key} или {x.Value}"))}" +
                                                              $"PeopleCount < 1000");
                 return;
@@ -77,10 +86,32 @@ namespace DkpBot.Commands
             
             try 
             {
+                var pvpPoints = 0;
+
+                if (words.Length > 3)
+                {
+                    var word = words[3];
+                    var match = fightRegex.Match(word);
+                    if (match.Success)
+                    {    
+                        int.TryParse(match.Groups[0].Value.Replace("f", ""), out pvpPoints);
+                    }
+                }
+                
+                if (words.Length > 4)
+                {
+                    var word = words[4];
+                    var match = fightRegex.Match(word);
+                    if (match.Success)
+                    {
+                        int.TryParse(match.Groups[0].Value.Replace("f", ""), out pvpPoints);
+                    }
+                }
+               
+                
                 var userResultAsync = await DBHelper.GetUserResultAsync(message.From.Id.ToString());
                 var user = User.FromDict(userResultAsync.Item);
                 userName = user.Name;
-                LambdaLogger.Log("user create: " + sw.ElapsedMilliseconds);    
                 if (int.Parse(words[2]) <= 0)
                 {
                     await botClient.SendTextMessageAsync(chatId,$"В событии должно участвовать не менее 1 человека");
@@ -98,16 +129,19 @@ namespace DkpBot.Commands
                     points = customDkp;
                 }
             
-                var code = await DBHelper.TryCreateEventAsync(words[1], words[2], points, message.From.Id);
+                var code = await DBHelper.TryCreateEventAsync(words[1], words[2], points, message.From.Id, pvpPoints);
                 await botClient.SendTextMessageAsync(chatId,$"Вы успешно cоздали событие {words[1]} на {words[2]} человек. КОД: {code}");
-                LambdaLogger.Log("+event created: " + sw.ElapsedMilliseconds);    
+                await botClient.SendTextMessageAsync(Constants.AdminChatId,
+                    $"Создано событие {words[1]} на {int.Parse(words[2])} человек от {userName}, dkp: ({points}) code {code}");
                 if (user.Characters.Count == 1 && withSelf)
                 {
                     var heroName = user.Characters.Single();
-                    var (_, dkp) = await DBHelper.TryJoinEventAsync(code, heroName, message.From.Id);
-                    await botClient.SendTextMessageAsync(chatId, $"Успешная регистрация героя {heroName} на событие {code}. Начислено {dkp} дкп");
+                    var (_, dkp, eName, pvp) = await DBHelper.TryJoinEventAsync(code, heroName, message.From.Id);
+                    var msg = $"Успешная регистрация героя {heroName} на событие {eName}, {code}. Начислено {dkp} дкп";
+                    if (pvp > 0)
+                        msg += $", {pvp} pvp-поинтов";
+                    await botClient.SendTextMessageAsync(chatId, msg);
                 }
-                LambdaLogger.Log("+character joined: " + sw.ElapsedMilliseconds);    
             }
             catch (Exception e)
             {
@@ -118,12 +152,5 @@ namespace DkpBot.Commands
 
         }
 
-        public override bool Match(Message message)
-        {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
-                return false;
-
-            return message.Text.Contains(this.Name);
-        }
     }
 }

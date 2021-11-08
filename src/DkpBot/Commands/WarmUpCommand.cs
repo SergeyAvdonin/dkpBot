@@ -14,13 +14,5 @@ namespace DkpBot.Commands
             LambdaLogger.Log("warming up...");
             await DBHelper.GetUserResultAsync(message.From.Id.ToString());
         }
-
-        public override bool Match(Message message)
-        {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
-                return false;
-
-            return message.Text.Contains(this.Name);
-        }
     }
 }

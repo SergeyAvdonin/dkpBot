@@ -25,9 +25,7 @@ namespace DkpBot.Commands
         public override async Task Execute(Message message, TelegramBotClient botClient)
         {
             var chatId = message.Chat.Id;
-            var words = message.Text.Split(' ');
-
-        
+            var words = message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             
             if (words.Length < 2  || string.IsNullOrEmpty(words[1]))
             {
@@ -89,7 +87,11 @@ namespace DkpBot.Commands
                 }
                 if (result.Item1 == JoinEventResult.Success)
                 {
-                    await botClient.SendTextMessageAsync(chatId, $"Успешная регистрация героя {heroName} на событие {rawCode}. Начислено {result.Item2} дкп");
+                    var msg =
+                        $"Успешная регистрация героя {heroName} на событие {result.Item3} код {rawCode}. Начислено {result.Item2} дкп";
+                    if (result.Item4 > 0)
+                        msg += $", {result.Item4} pvp-поинтов";
+                    await botClient.SendTextMessageAsync(chatId, msg);
                 }
             }
             catch (Exception e)
@@ -99,14 +101,6 @@ namespace DkpBot.Commands
                 LambdaLogger.Log("ERROR: " + e);
             }
 
-        }
-
-        public override bool Match(Message message)
-        {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
-                return false;
-
-            return message.Text.Contains(this.Name);
         }
     }
 }

@@ -17,27 +17,37 @@ namespace DkpBot.Commands
         {
             var chatId = message.Chat.Id;
             
+            var words = message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
             var userName = "'not found'";
             try
             {
                 var userResultAsync = await DBHelper.GetUserResultAsync(message.From.Id.ToString());
                 var user = User.FromDict(userResultAsync.Item);
-                userName = user.Name;
-                await botClient.SendTextMessageAsync(chatId, user.GetInfo());
+                if (words.Length > 1 && (int)user.Role <= 2)
+                {
+                    var target = await DBHelper.GetUserResultByNameAsync(words[1]);
+                    if (target == null || !target.Any())
+                    {
+                        await botClient.SendTextMessageAsync(chatId, $"несуществующее имя: {words[1]}");
+                        return;
+                    }
+                    var trgRes = await DBHelper.GetUserResultAsync(target["Id"].S);
+                    var trg = User.FromDict(trgRes.Item);
+                    await botClient.SendTextMessageAsync(chatId, trg.GetInfo());
+                    
+                }
+                else
+                {
+                    userName = user.Name;
+                    await botClient.SendTextMessageAsync(chatId, user.GetInfo());
+                }
             }
             catch (Exception e)
             {
                 await botClient.SendTextMessageAsync(chatId,  $"Произошла ошибка {e.Message}. Обратитесь к администратору");
                 await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Ошибка у {userName}, {e}");
             }
-        }
-
-        public override bool Match(Message message)
-        {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
-                return false;
-
-            return message.Text.Contains(this.Name);
         }
     }
 }

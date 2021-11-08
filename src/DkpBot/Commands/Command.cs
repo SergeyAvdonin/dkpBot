@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -9,7 +11,13 @@ namespace DkpBot.Commands
         public abstract string Name { get; }
 
         public abstract Task Execute(Message message, TelegramBotClient botClient);
-        
-        public abstract bool Match(Message message);
+
+        public virtual bool Match(Message message)
+        {
+            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
+                return false;
+
+            return message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(x=>x==Name);
+        }
     }
 }

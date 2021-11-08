@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using Amazon.DynamoDBv2.Model;
 using Amazon.Lambda.Core;
-using Amazon.Runtime.Internal.Util;
 using Newtonsoft.Json;
 
 namespace DkpBot
@@ -17,9 +16,15 @@ namespace DkpBot
         public Role Role;
         public int Adena;
         public int Dkp;
+        public int PvpPoints;
+        public int TotalPvpPoints;
+        public int EventsVisited;
+        public int TotalEventsVisited;
         public bool Active;
         public long ChatId;
         public DateTime CreationDateTime;
+        public string PartyLeader;
+        public string Mail;
 
         public PutItemRequest ToPutItem(string tableName, bool overwrite = false)
         {
@@ -40,6 +45,10 @@ namespace DkpBot
                     { "Active", new AttributeValue {BOOL = Active}},
                     { "ChatId", new AttributeValue {N = ChatId.ToString()}},
                     { "CreationDateTime", new AttributeValue {S = CreationDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ") }},
+                    { "PvpPoints", new AttributeValue { N = (PvpPoints).ToString() }},
+                    { "TotalPvpPoints", new AttributeValue { N = (TotalPvpPoints).ToString() }},
+                    { "EventsVisited", new AttributeValue { N = (EventsVisited).ToString() }},
+                    { "TotalEventsVisited", new AttributeValue { N = (TotalEventsVisited).ToString() }},
                 },
 
                 // Every item must have the key attributes, so using 'attribute_not_exists'
@@ -59,7 +68,7 @@ namespace DkpBot
         {
             return new User()
             {
-                Active = dict["Active"].BOOL,
+                Active = dict.ContainsKey("Active") && dict["Active"].BOOL,
                 Adena = int.Parse(dict["Adena"].N),
                 Dkp = int.Parse(dict["Dkp"].N),
                 Id = long.Parse(dict["Id"].S),
@@ -68,7 +77,13 @@ namespace DkpBot
                 TgLogin = dict["TgLogin"].S,
                 Name = dict["Name"].S,
                 CreationDateTime = DateTime.Parse(dict["CreationDateTime"].S),
-                Characters = dict.ContainsKey("Characters") ? dict["Characters"].SS : new List<string>()
+                Characters = dict.ContainsKey("Characters") ? dict["Characters"].SS : new List<string>(),
+                PartyLeader = dict.ContainsKey("PL") ? dict["PL"].S : "",
+                Mail = dict.ContainsKey("Mail") ? dict["Mail"].S : "",
+                PvpPoints = dict.ContainsKey("PvpPoints") ? int.Parse(dict["PvpPoints"].N) : 0,
+                TotalPvpPoints = dict.ContainsKey("TotalPvpPoints") ? int.Parse(dict["TotalPvpPoints"].N) : 0,
+                EventsVisited = dict.ContainsKey("EventsVisited") ? int.Parse(dict["EventsVisited"].N) : 0,
+                TotalEventsVisited = dict.ContainsKey("TotalEventsVisited") ? int.Parse(dict["TotalEventsVisited"].N) : 0,
             };
         }
 
@@ -80,9 +95,16 @@ namespace DkpBot
             sb.AppendLine($"Имя: {Name}");
             sb.AppendLine($"Telegram: {TgLogin}");
             sb.AppendLine($"Накоплено DKP: {Dkp}");
-            sb.AppendLine($"Накоплено адены: {Adena}");
+            sb.AppendLine($"Накоплено адены: {Adena}кк");
+            sb.AppendLine($"Накоплено pvp-очков: {PvpPoints}");
+            sb.AppendLine($"Рейтинг пвп-активности: {100.0*(float)PvpPoints/EventsVisited, 2}");
+            sb.AppendLine(!string.IsNullOrEmpty(PartyLeader) ? $"Ваш ПЛ: {PartyLeader}" : $"Ваш ПЛ: отсутствует");
             sb.AppendLine($"Ваши персонажи: {string.Join(",", Characters)}");
             sb.AppendLine($"Ваш статус: {Role}");
+            sb.AppendLine($"Персонаж для получения почты: {Mail}");
+            sb.AppendLine($"Всего посещено событий: {TotalEventsVisited}");
+            sb.AppendLine($"Pvp-очков за все время: {TotalPvpPoints}");
+            sb.AppendLine($"Рейтинг пвп-активности за все время: {100.0*(float)TotalPvpPoints/TotalEventsVisited, 2}");
 
             return sb.ToString();
         }

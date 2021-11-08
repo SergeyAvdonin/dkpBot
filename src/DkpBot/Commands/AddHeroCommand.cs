@@ -48,13 +48,5 @@ namespace DkpBot.Commands
                 LambdaLogger.Log("ERROR: " + e);
             }
         }
-
-        public override bool Match(Message message)
-        {
-            if (message.Type != Telegram.Bot.Types.Enums.MessageType.Text)
-                return false;
-
-            return message.Text.Contains(this.Name);
-        }
     }
 }
