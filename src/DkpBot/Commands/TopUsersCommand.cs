@@ -9,9 +9,9 @@ using Telegram.Bot.Types.Enums;
 
 namespace DkpBot.Commands
 {
-    public class TopCommand : Command
+    public class TopUsersCommand : Command
     {
-        public override string Name { get; } = "/top";
+        public override string Name { get; } = "/topusers";
         public override async Task Execute(Message message, TelegramBotClient botClient)
         {
             var chatId = message.Chat.Id;
@@ -20,16 +20,24 @@ namespace DkpBot.Commands
             
             try
             {
-                var count = 50;
+                var text = message.Text.Replace(" adena", "");
+                
+                var words = text.Split(' ', '\n', '\t');
 
+                var count = 50;
+                if(words.Length > 1 && int.TryParse(words[1], out count)) {}
+                
+                if (count > 100 || count < 0)
+                    count = 100;
+                
                 var userResultAsync = await DBHelper.GetUserResultAsync(message.From.Id.ToString());
                 var user = User.FromDict(userResultAsync.Item);
                 
                 userName = user.Name;
                 
-                var result = await DBHelper.GetTopByCharsAsync(count);
+                var result = await DBHelper.GetTopAsync(count);
                 var sep = new string(Enumerable.Repeat('-', 38).ToArray());
-                await botClient.SendTextMessageAsync(chatId, "```\n" + sep + $"\n|{"Имя персонажа", -20}|{"Dkp", -4}|{"Пак", -12}|\n" + sep + "\n" + string.Join("\n", result.Select(x => $"|{x.character, -20}|{x.dkp, -4}|{x.cp, -12}|")) + "\n" + sep + "```"
+                await botClient.SendTextMessageAsync(chatId, "```\n" + sep + $"\n|{"Имя", -20}|{"Dkp", -4}|{"WorldDkp", -8}|{"Пак", -12}|\n" + sep + "\n" + string.Join("\n", result.Select(x => $"|{x.Name, -20}|{x.Dkp, -4}|{x.WorldDkp, -8}|{x.ConstParty, -12}|")) + "\n" + sep + "```"
                 , ParseMode.Markdown);
             }
             catch (Exception e)

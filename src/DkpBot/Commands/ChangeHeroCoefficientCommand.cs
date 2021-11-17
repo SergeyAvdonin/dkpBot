@@ -12,7 +12,7 @@ namespace DkpBot.Commands
 {
     public class ChangeHeroCoefficientCommand : Command
     {
-        public override string Name { get; } = "/changecoeff";
+        public override string Name { get; } = "/cf";
 
         public override async Task Execute(Message message, TelegramBotClient botClient)
         {

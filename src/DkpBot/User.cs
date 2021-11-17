@@ -14,8 +14,8 @@ namespace DkpBot
         public string Name;
         public List<string> Characters;
         public Role Role;
-        public int Adena;
         public int Dkp;
+        public int WorldDkp;
         public int PvpPoints;
         public int TotalPvpPoints;
         public int EventsVisited;
@@ -25,6 +25,7 @@ namespace DkpBot
         public DateTime CreationDateTime;
         public string PartyLeader;
         public string Mail;
+        public string ConstParty;
 
         public PutItemRequest ToPutItem(string tableName, bool overwrite = false)
         {
@@ -39,9 +40,10 @@ namespace DkpBot
                     { "Id", new AttributeValue {S = Id.ToString() }},
                     { "TgLogin", new AttributeValue {S = TgLogin}},
                     { "Name", new AttributeValue {S = Name}},
+                    { "ConstParty", new AttributeValue {S = ConstParty ?? ""}},
                     { "Role", new AttributeValue {N = ((int)Role).ToString()}},
-                    { "Adena", new AttributeValue {N = (Adena).ToString()}},
                     { "Dkp", new AttributeValue {N = (Dkp).ToString()}},
+                    { "WorldDkp", new AttributeValue {N = (WorldDkp).ToString()}},
                     { "Active", new AttributeValue {BOOL = Active}},
                     { "ChatId", new AttributeValue {N = ChatId.ToString()}},
                     { "CreationDateTime", new AttributeValue {S = CreationDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ") }},
@@ -69,16 +71,16 @@ namespace DkpBot
             return new User()
             {
                 Active = dict.ContainsKey("Active") && dict["Active"].BOOL,
-                Adena = int.Parse(dict["Adena"].N),
+                WorldDkp = dict.ContainsKey("WorldDkp") ? int.Parse(dict["WorldDkp"].N) : 0,
                 Dkp = int.Parse(dict["Dkp"].N),
                 Id = long.Parse(dict["Id"].S),
                 ChatId = int.Parse(dict["ChatId"].N),
                 Role = (Role) int.Parse(dict["Role"].N),
                 TgLogin = dict["TgLogin"].S,
                 Name = dict["Name"].S,
+                ConstParty = dict.ContainsKey("ConstParty") ? dict["ConstParty"].S : "",
                 CreationDateTime = DateTime.Parse(dict["CreationDateTime"].S),
                 Characters = dict.ContainsKey("Characters") ? dict["Characters"].SS : new List<string>(),
-                PartyLeader = dict.ContainsKey("PL") ? dict["PL"].S : "",
                 Mail = dict.ContainsKey("Mail") ? dict["Mail"].S : "",
                 PvpPoints = dict.ContainsKey("PvpPoints") ? int.Parse(dict["PvpPoints"].N) : 0,
                 TotalPvpPoints = dict.ContainsKey("TotalPvpPoints") ? int.Parse(dict["TotalPvpPoints"].N) : 0,
@@ -95,16 +97,13 @@ namespace DkpBot
             sb.AppendLine($"Имя: {Name}");
             sb.AppendLine($"Telegram: {TgLogin}");
             sb.AppendLine($"Накоплено DKP: {Dkp}");
-            sb.AppendLine($"Накоплено адены: {Adena}кк");
-            sb.AppendLine($"Накоплено pvp-очков: {PvpPoints}");
-            sb.AppendLine($"Рейтинг пвп-активности: {100.0*(float)PvpPoints/EventsVisited, 2}");
-            sb.AppendLine(!string.IsNullOrEmpty(PartyLeader) ? $"Ваш ПЛ: {PartyLeader}" : $"Ваш ПЛ: отсутствует");
+            sb.AppendLine($"Накоплено DKP межсервер: {WorldDkp}");
+
+            sb.AppendLine(!string.IsNullOrEmpty(ConstParty) ? $"Ваша кп: {ConstParty}" : $"Ваша кп: отсутствует");
             sb.AppendLine($"Ваши персонажи: {string.Join(",", Characters)}");
             sb.AppendLine($"Ваш статус: {Role}");
             sb.AppendLine($"Персонаж для получения почты: {Mail}");
             sb.AppendLine($"Всего посещено событий: {TotalEventsVisited}");
-            sb.AppendLine($"Pvp-очков за все время: {TotalPvpPoints}");
-            sb.AppendLine($"Рейтинг пвп-активности за все время: {100.0*(float)TotalPvpPoints/TotalEventsVisited, 2}");
 
             return sb.ToString();
         }

@@ -31,16 +31,15 @@ namespace DkpBot.Commands
             var user = new User()
             {
                 Active = true,
-                Adena = 0,
                 Dkp = 0,
+                WorldDkp = 0,
                 Id = message.From.Id,
                 ChatId = chatId,
                 Role = Role.WaitingForAuthentication,
                 TgLogin = userName,
                 CreationDateTime = DateTime.UtcNow,
                 Characters = new List<string>(),
-                Name = words[1],
-                PartyLeader = ""
+                Name = words[1]
             };
 
             try

@@ -8,9 +8,9 @@ using Telegram.Bot.Types.Enums;
 
 namespace DkpBot.Commands
 {
-    public class CleanAdenaAndDkpCommand : Command
+    public class CleanDkpCommand : Command
     {
-        public override string Name { get; } = "/cleanadenadkp";
+        public override string Name { get; } = "/cleandkp";
 
         public override async Task Execute(Message message, TelegramBotClient botClient)
         {
@@ -25,6 +25,10 @@ namespace DkpBot.Commands
                     await DBHelper.CleanAdenaAndDkpAsync(u);
                 }
                 await botClient.SendTextMessageAsync(Constants.AdminChatId,  $"Обнулили стату у {users.Length} человек");
+                
+                var heroesCount = await DBHelper.CleanAllHeroesDkp();
+              
+                await botClient.SendTextMessageAsync(Constants.AdminChatId,  $"Обнулили стату у {heroesCount} персонажей");
             }
             catch (Exception e)
             {

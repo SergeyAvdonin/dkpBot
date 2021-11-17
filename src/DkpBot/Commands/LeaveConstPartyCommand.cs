@@ -9,45 +9,30 @@ using Telegram.Bot.Types;
 
 namespace DkpBot.Commands
 {
-    public class JoinCpCommand : Command
+    public class LeaveCpCommand : Command
     {
-        public override string Name { get; } = "/cpjoin";
+        public override string Name { get; } = "/cpleave";
 
         public override async Task Execute(Message message, TelegramBotClient botClient)
         {
             var words = message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var chatId = message.Chat.Id;
-
-            if (words.Length < 2)
-            {
-                await botClient.SendTextMessageAsync(chatId, $"Некорректный формат команды, используйте:\n /cpjoin name");
-                return;
-            }
-
-            var cpName = words[1];
+            
             var userName = "?";
             try 
             {
                 var userResultAsync = await DBHelper.GetUserResultAsync(message.From.Id.ToString());
                 var user = User.FromDict(userResultAsync.Item);
                 userName = user.Name;
-                if (!string.IsNullOrEmpty(user.ConstParty))
+                if (string.IsNullOrEmpty(user.ConstParty))
                 {
-                    await botClient.SendTextMessageAsync(chatId, "У вас уже есть кп");
-                    return;
-                }
-
-                var cp = await DBHelper.GetCp(cpName);
-                if (cp == null)
-                {
-                    await botClient.SendTextMessageAsync(chatId, "кп не найдена");
+                    await botClient.SendTextMessageAsync(chatId, "У вас нет кп");
                     return;
                 }
                 
-                await DBHelper.JoinConstParty(user, cpName);
+                await DBHelper.LeaveConstParty(user);
                 
-                await botClient.SendTextMessageAsync(chatId, $"Вы присоединились к кп {cpName}");
-                await DBHelper.JoinConstParty(user, cpName);
+                await botClient.SendTextMessageAsync(chatId, $"Вы успешно покинули кп '{user.ConstParty}'");
             }
             catch (Exception e)
             {

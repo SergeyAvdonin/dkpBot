@@ -36,7 +36,6 @@ namespace DkpBot.Commands
                 */
                 await botClient.SendTextMessageAsync(chatId, users.Count() + " колво");
                 
-                users = users.OrderByDescending(x => x.Adena).ToArray();
                 var rawgroups = users.GroupBy(x => x.PartyLeader).OrderByDescending(x=>x.Count()).ToArray();
                 var groups = rawgroups.Where(x => !string.IsNullOrEmpty(x.Key))
                     .Concat(rawgroups.Where(x => string.IsNullOrEmpty(x.Key)));
@@ -78,12 +77,12 @@ namespace DkpBot.Commands
                             else
                                 pl = user.Name;
                             
-                            msg += $"{member.Name}\t{member.Adena}\t{mail}\t{pl}\n";
+                            msg += $"{member.Name}\t{mail}\t{pl}\n";
                         }
                         else
                         {
                             if (!pls.Contains(member.Id)) 
-                                msg += $"{member.Name}\t{member.Adena}\t{mail}\t{pl}\n";
+                                msg += $"{member.Name}\t{mail}\t{pl}\n";
                         }
                     }
                 }

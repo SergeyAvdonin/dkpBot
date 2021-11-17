@@ -22,6 +22,7 @@ namespace DkpBot
         private static string UsersTableName = "Users";
         private static string HeroTableName = "Heroes";
         private static string EventsTableName = "Events";
+        private static string CpTableName = "ConstParties";
         public static void Init()
         {
             AmazonDynamoDBConfig clientConfig = new AmazonDynamoDBConfig
@@ -80,14 +81,8 @@ namespace DkpBot
             return partyLeaderName.S;
         }
         
-        public static async Task<MoveAdenaCommand.MoveEventResult> TryMoveAdena(User user, int adena)
+        public static async Task JoinConstParty(User user, string constParty)
         {
-            if (string.IsNullOrEmpty(user.PartyLeader))
-                return MoveAdenaCommand.MoveEventResult.NoPL;
-
-            if (user.Adena < adena)
-                return MoveAdenaCommand.MoveEventResult.NotEnough;
-            
             UpdateItemRequest req = new UpdateItemRequest
             {
                 TableName = UsersTableName,
@@ -95,32 +90,82 @@ namespace DkpBot
                 {
                     {"Id", new AttributeValue {S = user.Id.ToString()}},
                 },
+                ExpressionAttributeNames = new Dictionary<string,string>()
+                {
+                    {"#C", "ConstParty"}
+                },
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>()
                 {
-                    {":adena", new AttributeValue {N = (-adena).ToString()}},
+                    {":m", new AttributeValue {S = constParty}},
                 },
-                UpdateExpression = "ADD Adena :adena",
-            };
                 
-            await DataBaseClient.UpdateItemAsync(req);
-
-            req = new UpdateItemRequest
-            {
-                TableName = UsersTableName,
-                Key = new Dictionary<string, AttributeValue>()
-                {
-                    {"Id", new AttributeValue {S = user.PartyLeader}},
-                },
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>()
-                {
-                    {":adena", new AttributeValue {N = adena.ToString()}},
-                },
-                UpdateExpression = "ADD Adena :adena",
+                UpdateExpression = "SET #C = :m",
             };
                 
             await DataBaseClient.UpdateItemAsync(req);
             
-            return MoveAdenaCommand.MoveEventResult.Success;
+            UpdateItemRequest req2 = new UpdateItemRequest
+            {
+                TableName = CpTableName,
+                Key = new Dictionary<string, AttributeValue>()
+                {
+                    {"name", new AttributeValue {S = constParty}},
+                },
+                ExpressionAttributeNames = new Dictionary<string,string>()
+                {
+                    {"#P", "members"}
+                },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>()
+                {
+                    {":cp", new AttributeValue {NS = {user.Id.ToString()}}},
+                },
+                UpdateExpression = "ADD #P :cp",
+            };
+                
+            await DataBaseClient.UpdateItemAsync(req2);
+        }
+        
+        public static async Task LeaveConstParty(User user)
+        {
+            UpdateItemRequest req = new UpdateItemRequest
+            {
+                TableName = UsersTableName,
+                Key = new Dictionary<string, AttributeValue>()
+                {
+                    {"Id", new AttributeValue {S = user.Id.ToString()}},
+                },
+                ExpressionAttributeNames = new Dictionary<string,string>()
+                {
+                    {"#P", "ConstParty"}
+                },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>()
+                {
+                    {":cp", new AttributeValue {S = ""}},
+                },
+                UpdateExpression = "SET #P = :cp",
+            };
+                
+            await DataBaseClient.UpdateItemAsync(req);
+            
+            UpdateItemRequest req2 = new UpdateItemRequest
+            {
+                TableName = CpTableName,
+                Key = new Dictionary<string, AttributeValue>()
+                {
+                    {"name", new AttributeValue {S = user.ConstParty}},
+                },
+                ExpressionAttributeNames = new Dictionary<string,string>()
+                {
+                    {"#P", "members"}
+                },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>()
+                {
+                    {":cp", new AttributeValue {NS = {user.Id.ToString()}}},
+                },
+                UpdateExpression = "DELETE #P :cp",
+            };
+            
+            await DataBaseClient.UpdateItemAsync(req2);
         }
         
         public static async Task<string> TryAddHero(string heroName, int ownerId, string ownerName, string prettyName)
@@ -548,7 +593,7 @@ namespace DkpBot
             return code;
         }
 
-        public static async Task<(JoinEventCommand.JoinEventResult, int, string, int)> TryJoinEventAsync(string code, string heroName, int fromId)
+        public static async Task<(JoinEventCommand.JoinEventResult, int, string, int)> TryJoinEventAsync(string code, string heroName, int fromId, bool world = false)
         {
            var eventItem =  await GetItem(code, EventsTableName, "Id");
 
@@ -602,12 +647,12 @@ namespace DkpBot
            var peopleCoeff = 1.0;
            var maxPeopleCount = int.Parse(eventItem["maxPeopleCount"].N);
            if (maxPeopleCount < 15)
-               peopleCoeff = 1.2;
+               peopleCoeff = 1;
            if (maxPeopleCount < 10)
-               peopleCoeff = 1.5;
+               peopleCoeff = 1;
            
            points = Math.Floor(int.Parse(points) * coefficient * peopleCoeff).ToString(CultureInfo.InvariantCulture);
-           
+           var worldPoints = world ? points : "0";
            UpdateItemRequest req = new UpdateItemRequest
            {
                TableName = UsersTableName,
@@ -619,6 +664,7 @@ namespace DkpBot
                {
                    {"#D", "Dkp"},
                    {"#P", "PvpPoints"},
+                   {"#W", "WorldDkp"},
                    {"#TP", "TotalPvpPoints"},
                    {"#E", "EventsVisited"},
                    {"#TE", "TotalEventsVisited"},
@@ -627,9 +673,10 @@ namespace DkpBot
                {
                    {":dkp", new AttributeValue {N = points}},
                    {":pvpPoints", new AttributeValue {N = pvpPoints}},
+                   {":worldDkp", new AttributeValue {N = worldPoints}},
                    {":1", new AttributeValue {N = "1"}},
                },
-               UpdateExpression = "ADD #D :dkp, #P :pvpPoints, #TP :pvpPoints, #E :1, #TE :1",
+               UpdateExpression = "ADD #D :dkp, #P :pvpPoints, #TP :pvpPoints, #E :1, #TE :1, #W :worldDkp",
            };
                 
            await DataBaseClient.UpdateItemAsync(req);
@@ -658,6 +705,26 @@ namespace DkpBot
            };
                 
            await DataBaseClient.UpdateItemAsync(req2);
+           
+           UpdateItemRequest req3 = new UpdateItemRequest
+           {
+               TableName = HeroTableName,
+               Key = new Dictionary<string, AttributeValue>()
+               {
+                   {"Id", new AttributeValue {S = heroName}},
+               },
+               ExpressionAttributeNames = new Dictionary<string,string>()
+               {
+                   {"#P", "points"},
+               },
+               ExpressionAttributeValues = new Dictionary<string, AttributeValue>()
+               {
+                   {":h", new AttributeValue {N = points}},
+               },
+               UpdateExpression = "ADD #P :h"
+           };
+                
+           await DataBaseClient.UpdateItemAsync(req3);
            return (JoinEventCommand.JoinEventResult.Success, int.Parse(points), eventName, int.Parse(pvpPoints));
         }
 
@@ -689,14 +756,26 @@ namespace DkpBot
             return user;
         }
 
-        public static async Task<List<User>> GetTopAsync(int count, bool isAdenaSort)
+        public static async Task<List<User>> GetTopAsync(int count)
         {
             var scanResponse = await DataBaseClient.ScanAsync(UsersTableName, new Dictionary<string, Condition>());
             
             return scanResponse.Items
                 .Select(User.FromDict)
-                .OrderByDescending(x => isAdenaSort ? x.Adena : x.Dkp)
-                .ThenByDescending(x => isAdenaSort ? x.Dkp : x.Adena)
+                .OrderByDescending(x => x.Dkp)
+                .Take(count)
+                .ToList();
+        }
+        
+        public static async Task<List<ConstParty>> GetTopCpsAsync(int count)
+        {
+            var scanResponse = await DataBaseClient.ScanAsync(CpTableName, new Dictionary<string, Condition>());
+            
+            return scanResponse.Items
+                .Select(ConstParty.FromDict)
+                .Select(x=>x.Result)
+                .OrderByDescending(x => x.TotalWorldPoints)
+                .ThenByDescending(x=>x.TotalPoints)
                 .Take(count)
                 .ToList();
         }
@@ -719,6 +798,36 @@ namespace DkpBot
                 .Select(User.FromDict)
                 .ToArray();
             return users;
+        }
+        
+        public static async Task<int> CleanAllHeroesDkp()
+        {
+            var scanResponse = await DataBaseClient.ScanAsync(HeroTableName, new Dictionary<string, Condition>());
+            var heroes = scanResponse.Items
+                .Select(x => x["Id"].S)
+                .ToArray();
+            foreach (var hero in heroes)
+            {
+                UpdateItemRequest req = new UpdateItemRequest
+                {
+                    TableName = HeroTableName,
+                    Key = new Dictionary<string, AttributeValue>()
+                    {
+                        {"Id", new AttributeValue {S = hero}},
+                    },
+                
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>()
+                    {
+                        {":z", new AttributeValue {N = 0.ToString()}}
+                    },
+
+                    UpdateExpression = "SET points = :z",
+                };
+                
+                await DataBaseClient.UpdateItemAsync(req);
+            }
+
+            return heroes.Length;
         }
         
         public static async Task CleanAllCoefsAsync()
@@ -811,7 +920,7 @@ namespace DkpBot
                     {":z",new AttributeValue {N = 0.ToString()}}
                 },
 
-                UpdateExpression = "SET Adena = :z, Dkp = :z",
+                UpdateExpression = "SET WorldDkp = :z, Dkp = :z",
             };
                 
             await DataBaseClient.UpdateItemAsync(req);
@@ -1028,6 +1137,18 @@ namespace DkpBot
             return eventItem["participants"].SS;
         }
         
+        public static async Task<string> GetEventNameAsync(string code)
+        {
+            var eventItem =  await GetItem(code, EventsTableName, "Id");
+
+            if (eventItem.Count == 0)
+            {
+                return null;
+            }
+
+            return eventItem["eventName"].S;
+        }
+        
         public static async Task<List<string>> GetEventUsersWithPointsAsync(string code)
         {
             var eventItem =  await GetItem(code, EventsTableName, "Id");
@@ -1057,14 +1178,72 @@ namespace DkpBot
 
             var scanResponse = await DataBaseClient.ScanAsync(EventsTableName, scanFilter);
 
-            
-            
             var events = scanResponse.Items
                 .Select(Event.FromDict)
                 .Where(x=>x.dkpPoints > 0)
                 .ToArray();
             
             return events;
+        }
+
+        public static async Task<bool> TryCreateCp(long userId, string cpName)
+        {
+            try
+            {
+                var putItemRequest = new PutItemRequest
+                {
+                    TableName = CpTableName,
+                    Item = new Dictionary<string,AttributeValue>() {
+                        { "name", new AttributeValue {S = cpName }},
+                        { "pl", new AttributeValue {N = userId.ToString() }},
+                        { "members", new AttributeValue {NS = { userId.ToString()}}},
+                    },
+
+                    ConditionExpression = "attribute_not_exists(Id)"
+                };
+                var putItemResponse = await DataBaseClient.PutItemAsync(putItemRequest);
+            }
+            catch (ConditionalCheckFailedException e)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static async Task<List<(string character, string dkp, string cp)>>  GetTopByCharsAsync(int count)
+        {
+            var scanResponse = await DataBaseClient.ScanAsync(HeroTableName, new Dictionary<string, Condition>());
+            
+            var chars =  scanResponse.Items
+                .OrderByDescending(x => x.ContainsKey("points") ? int.Parse(x["points"].N) : 0)
+                .Take(count)
+                .ToList();
+
+            var res = chars.Select(x =>
+            {
+                var name = x["Id"].S;
+                var dkp = x.ContainsKey("points") ? x["points"]?.N : "0";
+
+                var owner = x["ownerId"].N;
+
+                var pack = GetUserProperty(owner, "ConstParty").GetAwaiter().GetResult()?.S ?? "-";
+
+                return (name, dkp, pack);
+            }).ToList();
+
+            return res;
+        }
+
+        public static async Task<ConstParty> GetCp(string cpName)
+        {
+            var item = await DataBaseClient.GetItemAsync(CpTableName,
+                new Dictionary<string, AttributeValue>() {{"name", new AttributeValue() {S = cpName}}});
+
+            if (item.Item.Count == 0)
+                return null;
+            
+            return await ConstParty.FromDict(item.Item);
         }
     }
 }

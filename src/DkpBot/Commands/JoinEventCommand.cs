@@ -59,7 +59,20 @@ namespace DkpBot.Commands
                     return;
                 }
 
-                var result = await DBHelper.TryJoinEventAsync(code, heroName, message.From.Id);
+                var name = await DBHelper.GetEventNameAsync(code);
+
+                if (name == null)
+                {
+                    await botClient.SendTextMessageAsync(chatId, $"Событие с кодом {rawCode} не найдено");
+                    return;
+                }
+                var rusName = CreateEventCommand.EnRuEventNames.ContainsKey(name) 
+                    ? CreateEventCommand.EnRuEventNames[name] 
+                    : name;
+                
+                var world = (rusName == "хб" || rusName == "лоа" || rusName == "аден" || rusName == "лед" ||
+                             rusName == "антарас");
+                var result = await DBHelper.TryJoinEventAsync(code, heroName, message.From.Id, world);
                 if (result.Item1 == JoinEventResult.NoEvent)
                 {
                     await botClient.SendTextMessageAsync(chatId, $"Событие с кодом {rawCode} не найдено");

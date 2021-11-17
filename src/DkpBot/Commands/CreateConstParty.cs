@@ -9,138 +9,45 @@ using Telegram.Bot.Types;
 
 namespace DkpBot.Commands
 {
-    public class CreateEventCommand : Command
+    public class CreateCpCommand : Command
     {
-        public override string Name { get; } = "/event";
-        const string AllowedChars = "0123456789";
-        static Random rng = new Random();
-        public static string GetCode(int length)
-        {
-            char[] chars = new char[length];
-            for (int i = 0; i < length; ++i)
-            {
-                int element = rng.Next(0, AllowedChars.Length);
-                chars[i] = AllowedChars.ElementAt(element);
-            }
-            return new string(chars);
-        }
-        
-        private Dictionary<string, int> eventNames = new Dictionary<string, int>()
-        {
-            {"ак", 1},
-            {"орфен", 1},
-            {"ядро", 1},
-            {"закен", 1},
-            {"баюм", 1},
-            {"тои", 1},
-            {"боссы", 1},
-            {"лоа", 1},
-            {"лилит", 1},
-            {"анаким", 1},
-            {"осада", 1},
-            {"пвп", 1},
-            {"хб", 1},
-            {"лед", 1},
-        };
+        public override string Name { get; } = "/cpnew";
 
-        private Dictionary<string, string> enRuEventNames = new Dictionary<string, string>()
-        {
-            {"aq", "ак"},
-            {"orfen", "орфен"},
-            {"core", "ядро"},
-            {"zaken", "закен"},
-            {"baum", "баюм"},
-            {"toi", "тои"},
-            {"boss", "боссы"},
-            {"loa", "лоа"},
-            {"lilith", "лилит"},
-            {"anakim", "анаким"},
-            {"siege", "осада"},
-            {"pvp", "пвп"},
-            {"hb", "хб"},
-            {"led", "лед"},
-        };
-        
-        private static Regex fightRegex = new Regex("f(\\d){0,1}");
-        
         public override async Task Execute(Message message, TelegramBotClient botClient)
         {
-            bool withSelf = !message.Text.Contains("nojoin");
+            var words = message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var chatId = message.Chat.Id;
 
-
-            var words = message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            
-
-            if (words.Length < 3 || !int.TryParse(words[2], out var peopleC) || peopleC >= 1000 
-                || (!eventNames.ContainsKey(words[1].ToLower()) && !enRuEventNames.ContainsKey(words[1].ToLower())))
+            if (words.Length < 2)
             {
-                await botClient.SendTextMessageAsync(chatId, $"Некорректный формат команды, используйте:\n /event eventName peopleCount (f)\n" +
-                                                             $"Возможные eventName:\n\t\t{string.Join("\n\t\t",enRuEventNames.Select(x => $"{x.Key} или {x.Value}"))}" +
-                                                             $"PeopleCount < 1000");
+                await botClient.SendTextMessageAsync(chatId, $"Некорректный формат команды, используйте:\n /cpnew name");
                 return;
             }
 
-            var eventName = words[1].ToLower();
-            var userName = "'not found'";
-            
+            var cpName = words[1];
+            var userName = "?";
             try 
             {
-                var pvpPoints = 0;
-
-                if (words.Length > 3)
-                {
-                    var word = words[3];
-                    var match = fightRegex.Match(word);
-                    if (match.Success)
-                    {    
-                        int.TryParse(match.Groups[0].Value.Replace("f", ""), out pvpPoints);
-                    }
-                }
-                
-                if (words.Length > 4)
-                {
-                    var word = words[4];
-                    var match = fightRegex.Match(word);
-                    if (match.Success)
-                    {
-                        int.TryParse(match.Groups[0].Value.Replace("f", ""), out pvpPoints);
-                    }
-                }
-               
-                
                 var userResultAsync = await DBHelper.GetUserResultAsync(message.From.Id.ToString());
                 var user = User.FromDict(userResultAsync.Item);
                 userName = user.Name;
-                if (int.Parse(words[2]) <= 0)
+                if (!string.IsNullOrEmpty(user.ConstParty))
                 {
-                    await botClient.SendTextMessageAsync(chatId,$"В событии должно участвовать не менее 1 человека");
-                    await botClient.SendTextMessageAsync(Constants.AdminChatId, $"Попытка создать событие на {int.Parse(words[2])} человек от {userName}");
+                    await botClient.SendTextMessageAsync(chatId, "У вас уже есть кп");
                     return;
                 }
-
-                var rusName = enRuEventNames.ContainsKey(eventName) 
-                    ? enRuEventNames[eventName] 
-                    : eventName;
-
-                var points = eventNames[rusName];
-                if (words.Length > 3 && int.TryParse(words[3], out var customDkp))
+                
+                var result = await DBHelper.TryCreateCp(user.Id, cpName);
+                await DBHelper.JoinConstParty(user, cpName);
+                
+                if (result)
                 {
-                    points = customDkp;
+                    await botClient.SendTextMessageAsync(chatId, $"Вы успешно создали кп {cpName}");
+                    await botClient.SendTextMessageAsync(Constants.AdminChatId, $"{userName} успешно создал кп {cpName}");
                 }
-            
-                var code = await DBHelper.TryCreateEventAsync(words[1], words[2], points, message.From.Id, pvpPoints);
-                await botClient.SendTextMessageAsync(chatId,$"Вы успешно cоздали событие {words[1]} на {words[2]} человек. КОД: {code}");
-                await botClient.SendTextMessageAsync(Constants.AdminChatId,
-                    $"Создано событие {words[1]} на {int.Parse(words[2])} человек от {userName}, dkp: ({points}) code {code}");
-                if (user.Characters.Count == 1 && withSelf)
+                else
                 {
-                    var heroName = user.Characters.Single();
-                    var (_, dkp, eName, pvp) = await DBHelper.TryJoinEventAsync(code, heroName, message.From.Id);
-                    var msg = $"Успешная регистрация героя {heroName} на событие {eName}, {code}. Начислено {dkp} дкп";
-                    if (pvp > 0)
-                        msg += $", {pvp} pvp-поинтов";
-                    await botClient.SendTextMessageAsync(chatId, msg);
+                    await botClient.SendTextMessageAsync(chatId, $"Ошибка. Кп с именем '{cpName}' уже существует");
                 }
             }
             catch (Exception e)

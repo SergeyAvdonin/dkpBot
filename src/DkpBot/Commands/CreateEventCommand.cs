@@ -27,23 +27,25 @@ namespace DkpBot.Commands
         
         private Dictionary<string, int> eventNames = new Dictionary<string, int>()
         {
-            {"ак", 1},
-            {"орфен", 1},
-            {"ядро", 1},
-            {"закен", 1},
-            {"баюм", 1},
-            {"тои", 1},
-            {"боссы", 1},
-            {"лоа", 1},
-            {"лилит", 1},
-            {"анаким", 1},
-            {"осада", 1},
-            {"пвп", 1},
-            {"хб", 1},
-            {"лед", 1},
+            {"ак", 100},
+            {"орфен", 100},
+            {"ядро", 100},
+            {"закен", 100},
+            {"баюм", 300},
+            {"тои", 400},
+            {"боссы", 100},
+            {"лоа", 400},
+            {"лилит", 100},
+            {"анаким", 100},
+            {"осада", 200},
+            {"хб", 200},
+            {"лед", 250},
+            {"аден", 200},
+            {"антарас", 200},
+            {"фринта", 250},
         };
 
-        private Dictionary<string, string> enRuEventNames = new Dictionary<string, string>()
+        public static Dictionary<string, string> EnRuEventNames = new Dictionary<string, string>()
         {
             {"aq", "ак"},
             {"orfen", "орфен"},
@@ -56,9 +58,11 @@ namespace DkpBot.Commands
             {"lilith", "лилит"},
             {"anakim", "анаким"},
             {"siege", "осада"},
-            {"pvp", "пвп"},
             {"hb", "хб"},
             {"led", "лед"},
+            {"aden", "аден"},
+            {"antharas", "антарас"},
+            {"frintezza", "фринта"},
         };
         
         private static Regex fightRegex = new Regex("f(\\d){0,1}");
@@ -73,10 +77,10 @@ namespace DkpBot.Commands
             
 
             if (words.Length < 3 || !int.TryParse(words[2], out var peopleC) || peopleC >= 1000 
-                || (!eventNames.ContainsKey(words[1].ToLower()) && !enRuEventNames.ContainsKey(words[1].ToLower())))
+                || (!eventNames.ContainsKey(words[1].ToLower()) && !EnRuEventNames.ContainsKey(words[1].ToLower())))
             {
                 await botClient.SendTextMessageAsync(chatId, $"Некорректный формат команды, используйте:\n /event eventName peopleCount (f)\n" +
-                                                             $"Возможные eventName:\n\t\t{string.Join("\n\t\t",enRuEventNames.Select(x => $"{x.Key} или {x.Value}"))}" +
+                                                             $"Возможные eventName:\n\t\t{string.Join("\n\t\t",EnRuEventNames.Select(x => $"{x.Key} или {x.Value}"))}" +
                                                              $"PeopleCount < 1000");
                 return;
             }
@@ -119,8 +123,8 @@ namespace DkpBot.Commands
                     return;
                 }
 
-                var rusName = enRuEventNames.ContainsKey(eventName) 
-                    ? enRuEventNames[eventName] 
+                var rusName = EnRuEventNames.ContainsKey(eventName) 
+                    ? EnRuEventNames[eventName] 
                     : eventName;
 
                 var points = eventNames[rusName];
@@ -136,7 +140,11 @@ namespace DkpBot.Commands
                 if (user.Characters.Count == 1 && withSelf)
                 {
                     var heroName = user.Characters.Single();
-                    var (_, dkp, eName, pvp) = await DBHelper.TryJoinEventAsync(code, heroName, message.From.Id);
+
+                    var world = (rusName == "хб" || rusName == "лоа" || rusName == "аден" || rusName == "лед" ||
+                                 rusName == "антарас");
+                        
+                    var (_, dkp, eName, pvp) = await DBHelper.TryJoinEventAsync(code, heroName, message.From.Id, world);
                     var msg = $"Успешная регистрация героя {heroName} на событие {eName}, {code}. Начислено {dkp} дкп";
                     if (pvp > 0)
                         msg += $", {pvp} pvp-поинтов";
